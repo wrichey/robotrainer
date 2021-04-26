@@ -4,12 +4,12 @@ I HIGHLY encourage the user to edit/customize these exercises to suit your needs
 Some ideas of how you can customize: 
  - Add/remove exercises based on your preferences and available equipment 
      - don't forget that there's options to make the trainer tell you when to switch, jump, pulse, etc.
+     - update the text so that exercises (and their options) make sense to you
  - change the duration time = scale_factor * x (changes the proportion of time relative to other exercises)
  - edit the robot text to add descriptors for exercises you forget often!
  - change your workout length, the number of times you want to repeat a circuit, the number of circuits 
 
- 
-This code has been tested on Mac only (sorry).
+This script is meant to be highly customizable but has currently been tested on Mac only (sorry).
 ''' 
 import subprocess
 import random
@@ -47,7 +47,7 @@ x = 10            # units in seconds
                   To scale the difficulty of an exercise, scroll down to the exercise object initializations'''
                   #note: you will run into problems if you set x to some ridiculously small value such that you 
                   #      run out of unique exercises to fill up your time... 
-                  #      i.e. either (1) make sure there's enough exercises to fill your desired time with unique
+                  #      i.e. either (1) make sure there's enough exercises to fill your desired_time with unique
                   #                      options OR
                   #                  (2) comment out the uniqueness check (repeat_check) 
 
@@ -356,14 +356,6 @@ time.sleep(60*stretchtime)
 speak('Get ready to rumble!')
 speak('Let\'s do this thang!!')
 
-
-#listener = keyboard.Listener(on_press=on_press)
-
-
-#listener.start()  # start to listen on a separate thread
-#listener.join()  # remove if main thread is polling self.keys
-#keyboard.on_press_key("p", lambda _:print("You pressed p"))
-
 #every workout has cardio
 #warmup
 if len(cardio_chosen)>0:
@@ -399,8 +391,3 @@ speak('Workout was  %.02f minutes ' %real_elapsed_time)
 
 print('Predicted a workout %.02f minutes long' %total_time)
 print('Workout Time: %.02f minutes ' %real_elapsed_time)
-
-#ready set go is not part of workout time if your rest>0
-# make it so the "onto the next circuit "
-# make it so the more than halfway through only happens if you're more than halfway through lol
-# this happened for the end also? 
