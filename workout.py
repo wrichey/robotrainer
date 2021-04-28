@@ -3,13 +3,13 @@ This is intened to be a FREE workout generator and robot personal trainer
 I HIGHLY encourage the user to edit/customize these exercises to suit your needs/preferences!
 Some ideas of how you can customize: 
  - Add/remove exercises based on your preferences and available equipment 
-     - don't forget that there's options to make the trainer tell you when to switch, jump, pulse, etc.
-     - update the text so that exercises (and their options) make sense to you
- - change the duration time = scale_factor * x (changes the proportion of time relative to other exercises)
+     - don't forget that there's options to switch, jump, pulse, etc.
+ - change the duration time = scale_factor *x (changes the proportion of time relative to other exercises)
  - edit the robot text to add descriptors for exercises you forget often!
  - change your workout length, the number of times you want to repeat a circuit, the number of circuits 
 
-This script is meant to be highly customizable but has currently been tested on Mac only (sorry).
+ 
+This code has been tested on Mac only (sorry)
 ''' 
 import subprocess
 import random
@@ -17,8 +17,16 @@ from datetime import datetime
 import time
 import math
 import sys, tty
-#for windows:
-import pyttsx3  #requires pip install pyttsx3
+
+#for windows: import pyttsx3
+
+from pynput import keyboard
+
+#if you run into trouble with the substitute feature using pynput
+# 1) https://stackoverflow.com/questions/53088995/pynput-keyboard-listener-does-not-detect-keys-on-mac-os-x
+# 2) install keyboard instead and implement the substitute feature (esp for windows)
+# 3) fore-go the substitue feature and live your life at the mercy of RoboTrainer
+# 4) fix it another way and let me know how
 
 
 '''---------------------------------------------user defined variables---------------------------------------------'''
@@ -47,21 +55,22 @@ x = 10            # units in seconds
                   To scale the difficulty of an exercise, scroll down to the exercise object initializations'''
                   #note: you will run into problems if you set x to some ridiculously small value such that you 
                   #      run out of unique exercises to fill up your time... 
-                  #      i.e. either (1) make sure there's enough exercises to fill your desired_time with unique
+                  #      i.e. either (1) make sure there's enough exercises to fill your desired time with unique
                   #                      options OR
                   #                  (2) comment out the uniqueness check (repeat_check) 
 
 resttime = 0      # units in seconds
                   # length of rest between exercises
-stretchtime = .5  # units in minutes
+stretchtime = 0#.5  # units in minutes
                   # length of time designated for stretching in the beginning of the workout
-operating_system = 'Mac' #if this isn't 'Mac', you will need pyttsx3 make sure you can import pyttsx3.
-                  # Macs can use subprocess
-                  # tip: I sometimes have trouble with text to speech through my bluetooth headphones. Haven't figured out why
-                  #      but the problem goes away when I disconnect from bluetooth, use voice-to-text through native computer 
-                  #.     speakers, then reconnect my speakers.
+operating_system = 'Mac' #if this isn't 'Mac', make sure you import pyttsx3
 
-
+global substitutionON
+substitutionON = True   #On = a separate thread will listen for a keypress, keypresses will swap out the current exercise
+                      #     for another exercise of the same type. It listens in all windows!
+                      #     --> Use the ESC key to toggle the substitution functionality on/off mid-program 
+                      # Off = you live your life at the mercy of robo trainer. The generated workout is written in stone
+     
 ''' ------------------------------------------ Exercise object initializations--------------------------------------------'''    
 
 class exercise():
@@ -85,7 +94,7 @@ cardio_options = [exercise('jumping jacks'), exercise('toe touches on the bag'),
                   exercise('froggies',jump=1),exercise('jump rope'), exercise('Skip in place'),
                   exercise('plank jacks',3*x), exercise('lateral hops'),
                   exercise('Forward backward hop'), exercise('in and out fast feet'),
-                  exercise('sprinter skip. runners lunge into a skip',switch=1), exercise('jumping climber. beginning of a burpee'),
+                  exercise('sprinter skip. runners lunge into a skip',switch=1), exercise('jumping mountain climbers'),
                   exercise('low box step ups. Keep it speedy!!',switch=1)]
 
 #abs
@@ -94,7 +103,7 @@ ab_options = [exercise('jack knives',2*x), exercise('bicycle crunches',2*x), exe
               exercise('oblique crunches. bend your leg and put ankle on opposite knee. twist to get elbow to bent knee',switch=1),
               exercise('leg raises'), exercise('v ups'), exercise('russian twists'), exercise('superman'),
               exercise('knee raises. get on the floor basically half a jack knife'), exercise('flutter kicks'),
-              exercise('x ups. from the floor, arm to opposite leg lift'),  exercise('wind shield wiper'), 
+              exercise('x ups. from the floor, arm to opposite leg lift'),  exercise('windshield wipers'), 
               exercise('twisting mountain climbers',2*x),exercise('giant mountain climbers'),
               exercise('scissor crossover kick'), exercise('mountain climbers',2*x)]#,
               #exercises that require TRX
@@ -125,20 +134,22 @@ arm_options = [exercise('wide arm pushups',3*x), exercise('tricep dips',2*x), ex
                exercise('resistance bands bent over row'), exercise('Resistance bands lateral plank walk'),
                exercise('Resistance bands kneeling one arm row',switch =1),exercise('Resistance bands. Arm pull down'),
                #exercises that requrie TRX
-               #exercise('TRX deltoid or chest fly. Face away from door',3*x), exercise('TRX bicep curls',2*x),
-               exercise('TRX chest presses or pushups'),exercise('TRX tricep extension',4*x)]#,
-               #exercise('TRX rowers'), exercise('TRX reverse crunch',3*x), exercise('TRX plank')]
+               exercise('TRX deltoid or chest fly. Face away from door',3*x), exercise('TRX bicep curls',2*x),
+               exercise('TRX chest presses or pushups'),exercise('TRX tricep extension'), exercise('TRX rowers'), 
+               #exercise('TRX reverse crunch',3*x), exercise('TRX plank')]
+               #exercise that require dumbells
+               exercise('shoulder presses with dumbells')]
 
 '''---------------------------------------------end user variables---------------------------------------------'''
-global c_index
-global current_index
+#global variables initialized for substitution functionality 
+#  these variables are used to swap out the current exercise for a different UNIQUE exercise
+global c_index, current_index,interlude, cardio_inds, ab_inds, leg_inds, arm_inds 
+
 #initialize the py text to speach robot voice
 if operating_system != 'Mac':
     print('initializing pyttsx3')
     voice = pyttsx3.init()
-
-    #adjust the volume so you can hear native computer sounds over the robot (like friends on Zoom)
-    voice.setProperty('volume',.8) 
+    voice.setProperty('volume',.8)
 
 def speak(voicestr):
     ''' uses the operating system voice to give command (text to speach)
@@ -188,7 +199,7 @@ def circuit(ex):
               pass
             speak('Ready. -. -.  Set. -. -.   Go')
             t1 = time.time()
-
+        
         #if the exrcise is more than halfway over, add spice
         if time.time()-t1 >ex[current_index].time/2+resttime and not halfway:
             halfway = 1            
@@ -204,7 +215,8 @@ def circuit(ex):
             #that can be added halfway through the exercise
             
             if ex[current_index].fastfeet:
-                speak('Add in fast feet.')
+                if random.randint(0,1):#50/50 chance of adding a jump
+                    speak('Add in fast feet.')
                 
             if ex[current_index].jump:
                 #this is an exercise that can have a jump added
@@ -255,13 +267,78 @@ def add_unique_index(len_options,indices):
     return indices
  
 def substitute():
-    global c_index
-    global current_index
+    #figure out where in the workout you are
+
+    #we don't anticipate having to skip a lot, so just look for where that exercise occurs
+    if c_index == -1:
+      #in cardio_chosen
+      current_circuit = cardio_chosen
+      options = cardio_options
+      inds = cardio_inds
+    else:
+      #in a regular circuit... need to figure out the details
+      if interlude_Flag:
+        current_circuit = interlude[c_index]
+        options = cardio_options
+        inds = cardio_inds
+      else:
+        current_circuit = circuits[c_index]
+
+        #the current exercise:
+        ex = current_circuit[current_index]
+        if ex in leg_options:
+          options = leg_options
+          inds = leg_inds
+        elif ex in arm_options:
+          options = arm_options
+          inds = arm_inds
+        else:
+          options= ab_options
+          inds = ab_inds
+
+    ex = current_circuit[current_index]
+    print('Replacing %s' %ex.word)
+    new_inds = add_unique_index(len(options)-1, inds)
+    new_ex = options[new_inds[-1]]
+    
+    #swap this new exercise into the current circuit
+    current_circuit[current_index] = new_ex
+
     #substitute current exercise with something else from that category
-    speak('skipping')
-    print('current circuit:', c_index)
-    print('current exercise:',current_index)
+    speak('OK. Instead, do %s' %new_ex.word)
+    print('\t-->%s' %new_ex.word)
     return
+
+def on_press(key):
+    global substitutionON
+    if c_index <-1:
+        return
+
+    #this allows you to turn listning off so you can type while the workout is going
+    #without skipping a million exercises
+    if key == keyboard.Key.esc:
+      substitutionON =  not substitutionON 
+      print('SubstitutionON: %s' %substitutionON)
+      return
+    if substitutionON == False:
+      return
+
+    substitute()
+    ''' #you can use this to see what a key is called 
+    #if you want to implement a new keypress functionality
+    try:
+        print('alphanumeric key {0} pressed'.format(
+            key.char))
+    except AttributeError:
+        print('special key {0} pressed'.format(
+            key))'''
+
+if substitutionON:
+  listener = keyboard.Listener(on_press=on_press)
+  listener.start()  # start to listen on a separate thread
+  #listener.join()  # remove if main thread is polling self.keys
+  c_index = -2
+  interlude_Flag = False
 
 #initialize the random seed with today's date
 # to reduce day-to-day similarities
@@ -280,6 +357,7 @@ leg_inds = []
 arm_inds = []
 
 while total_time < desired_time:
+    #print('\n\n\n\n')
     if muscle_groups[0]:
         ab_inds = add_unique_index(len(ab_options)-1, ab_inds)
     if muscle_groups[1]:
@@ -309,10 +387,9 @@ while total_time < desired_time:
     #start summing the time,
     rests = resttime
     old_time = total_time
-    total_time =0
+    total_time =30 #this is how long the motivational stuff takes to say out loud. 
     cardio_times = [x.time for x in cardio_chosen]
     total_time = sum(cardio_times) #time it takes for cardio intro
-    cardio_words = [x.word for x in cardio_chosen]
     
     #re-initialize --
     circuits = []
@@ -328,7 +405,7 @@ while total_time < desired_time:
         i1 =random.randint(0, len(cardio_options)-1)
         i2 = random.randint(0, len(cardio_options)-1)
         interlude.append([cardio_options[i1], cardio_options[i2]])
-
+        
         #compute the time for the circuit
         c1_time =0
         c1_times =[x.time for x in c1]        
@@ -366,7 +443,6 @@ if len(cardio_chosen)>0:
 start_time = time.time()
 for c_index in range(len(repeats)): #for each circuit
     this_circuit_exercises = circuits[c_index]
-    print('starting circuit')
     if len(this_circuit_exercises)>0:
       for r in range(repeats[c_index]): #repeat the circuit
           circuit(this_circuit_exercises)
@@ -377,8 +453,11 @@ for c_index in range(len(repeats)): #for each circuit
           speak('Last two exercises! Almost there! push through.')
       elif (time.time()-start_time)/60 > total_time/2:
           speak('More than halfway through the workout!')
-
-      circuit(interlude[c_index]) #do the interlude cardio exercise
+      
+      #do the interlude cardio exercises
+      interlude_Flag=True     #handle the interlude flag for substitution purposes     
+      circuit(interlude[c_index]) 
+      interlude_Flag=False 
 
       if c_index != len(circuits)-1:
           speak('Onto the next circuit! ')
@@ -391,3 +470,6 @@ speak('Workout was  %.02f minutes ' %real_elapsed_time)
 
 print('Predicted a workout %.02f minutes long' %total_time)
 print('Workout Time: %.02f minutes ' %real_elapsed_time)
+
+#TODO: 
+# - substitution voice in separate thread currently just screams over the main thread's voice
