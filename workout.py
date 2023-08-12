@@ -3,7 +3,7 @@ This is intened to be a FREE workout generator and robot personal trainer
 I HIGHLY encourage the user to edit/customize these exercises to suit your needs/preferences!
 Some ideas of how you can customize: 
  - Add/remove exercises based on your preferences and available equipment 
-     - don't forget that there's options to switch, jump, pulse, etc.
+     - don't forget that there are options to switch, jump, pulse, etc.
  - change the duration time = scale_factor *x (changes the proportion of time relative to other exercises)
  - edit the robot text to add descriptors for exercises you forget often!
  - change your workout length, the number of times you want to repeat a circuit, the number of circuits 
@@ -18,10 +18,7 @@ import time
 import math
 import sys, tty
 
-#for windows: import pyttsx3
-
 from pynput import keyboard
-
 #if you run into trouble with the substitute feature using pynput
 # 1) https://stackoverflow.com/questions/53088995/pynput-keyboard-listener-does-not-detect-keys-on-mac-os-x
 # 2) install keyboard instead and implement the substitute feature (esp for windows)
@@ -35,7 +32,7 @@ muscle_groups = [1, 1, 1, 1] # abs, legs, arms, cardio;
                           # 1 = muscle group included
                           # 0 = muscle group excluded
                           
-desired_time = 25 # this is an approximate MINIMUM time.
+desired_time = 35 # this is an approximate MINIMUM time.
                   # your workout is guaranteed to be LONGER than this time, likely by 3-10 minutes...
                   # If you want more specific workout lengths... have fun updating this code
 
@@ -43,7 +40,7 @@ repeats = [3,2]   # number of times circuits repeat
                   # e.g. [number of times circuit 1 repeats,
                   #       number of times circuit 2 repeats.. etc.]
                   # to add circuits simply increase the length of this list... 
-                  # i.e. three circuits that are each repeated twie => repeats = [2,2,2]
+                  # i.e. three circuits that are each repeated twice => repeats = [2,2,2]
 
 x = 10            # units in seconds
                   # decides length of each exercise;
@@ -57,13 +54,13 @@ x = 10            # units in seconds
                   #      run out of unique exercises to fill up your time... 
                   #      i.e. either (1) make sure there's enough exercises to fill your desired time with unique
                   #                      options OR
-                  #                  (2) comment out the uniqueness check (repeat_check) 
+                  #                  (2) comment out the uniqueness check (the while loop in add_unique_index) 
 
 resttime = 0      # units in seconds
                   # length of rest between exercises
 stretchtime = 0#.5  # units in minutes
                   # length of time designated for stretching in the beginning of the workout
-operating_system = 'Mac' #if this isn't 'Mac', make sure you import pyttsx3
+operating_system = 'Mac' #if this isn't 'Mac', make sure you have pyttsx3 installed
 
 global substitutionON
 substitutionON = True   #On = a separate thread will listen for a keypress, keypresses will swap out the current exercise
@@ -245,7 +242,6 @@ def choose(exercises,inds,split):
     split.append(len(inds)) #last split ends at end of indices
     words_chosen = [exercises[i] for i in inds]
     start = 0
-    end = split[0]
     exercise_list_of_lists=[] #initialize
     for s in range(len(split)):
         exercise_list_of_lists.append(words_chosen[start:split[s]])
@@ -367,7 +363,7 @@ while total_time < desired_time:
     if muscle_groups[3]:
         cardio_inds = add_unique_index(len(cardio_options)-1, cardio_inds)
 
-    
+    #
     if len(leg_inds)<2:
         split = [0]
         #technically this might be inefficient but if you're actually
@@ -396,10 +392,11 @@ while total_time < desired_time:
     interlude = []
     for c in range(len(repeats)): #for each circuit
         #put legs, abs and arms in the circuit
-        c1 = l_ls[c]
-        [c1.append(i) for i in ab_ls[c]]
-        [c1.append(i) for i in a_ls[c]]
-        circuits.append(c1)
+        current_circuit = []
+        [current_circuit.append(i) for i in l_ls[c]]
+        [current_circuit.append(i) for i in ab_ls[c]]
+        [current_circuit.append(i) for i in a_ls[c]]
+        circuits.append(current_circuit)
 
         #put together a cardio interlude of 2 random exercises
         i1 =random.randint(0, len(cardio_options)-1)
@@ -407,13 +404,13 @@ while total_time < desired_time:
         interlude.append([cardio_options[i1], cardio_options[i2]])
         
         #compute the time for the circuit
-        c1_time =0
-        c1_times =[x.time for x in c1]        
+        current_circuit_time =0
+        current_circuit_times =[x.time for x in current_circuit]        
         interlude_time =0
         interlude_times=[x.time for x in interlude[c]]
         
         # time for the circuit * # of times circuit repeats + time for the interlude cardio + time for rests between exercises
-        total_time += sum(c1_times)*repeats[c] +              sum(interlude_times)          + rests*(len(c1)*repeats[c]+2)
+        total_time += sum(current_circuit_times)*repeats[c] +              sum(interlude_times)          + rests*(len(current_circuit)*repeats[c]+2)
 
     total_time = total_time/60
     if total_time == old_time: #no change, break loop
