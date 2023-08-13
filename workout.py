@@ -127,7 +127,7 @@ arm_options = [exercise('wide arm pushups',3*x), exercise('tricep dips',2*x), ex
                exercise('rotation push up'), exercise('high plank',2*x), exercise('plank with alternating hand taps',tapmix=1),
                #exercises that require resitance bands
                exercise('Resistance bands arm pull apart',3*x),exercise('Resistance bands hammer curl up',3*x),
-               exercise('Resistnace bands tricep overhead extension',3*x,switch=1),               
+               exercise('Resistance bands tricep overhead extension',3*x,switch=1),               
                exercise('resistance bands bent over row'), exercise('Resistance bands lateral plank walk'),
                exercise('Resistance bands kneeling one arm row',switch =1),exercise('Resistance bands. Arm pull down'),
                #exercises that requrie TRX
@@ -342,8 +342,8 @@ random.seed(datetime.now())
 
 
 #beginning sequence
-speak('I am proud of you for showing up today! Let\'s get ready to SWEAT!')
-speak('Take '+ str(stretchtime) +' minutes to stretch what you need')
+#speak('I am proud of you for showing up today! Let\'s get ready to SWEAT!')
+#speak('Take '+ str(stretchtime) +' minutes to stretch what you need')
 
 #compute exercises
 total_time = 0
